@@ -1,0 +1,141 @@
+{# templates/analysis_results.html #}
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Skin Analysis Results</h1>
+
+        {# Images Grid #}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {% for position, path in image_paths.items() %}
+            <div class="bg-white shadow rounded-lg overflow-hidden">
+                <div class="p-4">
+                    <h2 class="text-xl font-semibold mb-4">{{ position }} View</h2>
+                    <img src="{{ path }}" alt="{{ position }} view" class="w-full h-auto rounded-lg">
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {# Analysis Results #}
+        {% for position, result in analysis.items() %}
+        <div class="bg-white shadow rounded-lg overflow-hidden mb-8">
+            <div class="p-6">
+                <h2 class="text-2xl font-bold mb-6">Analysis for {{ position }} View</h2>
+
+                {# Skin Type Section #}
+                {% if result.skin_type %}
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">Skin Type Analysis</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-lg mb-2">Type: <span class="font-medium">{{ result.skin_type.type }}</span></p>
+                        <p class="text-gray-600">Confidence: {{ "%.1f"|format(result.skin_type.confidence * 100) }}%</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                {# Conditions Section #}
+                {% if result.conditions %}
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">Detected Conditions</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for condition, details in result.conditions.items() %}
+                        {% if details.detected %}
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold text-lg mb-2 capitalize">{{ condition }}</h4>
+                            <ul class="space-y-2">
+                                <li class="text-sm">
+                                    <span class="text-gray-600">Severity:</span>
+                                    <span class="font-medium ml-2 
+                                        {% if details.severity == 'Severe' %}text-red-600
+                                        {% elif details.severity == 'Moderate' %}text-yellow-600
+                                        {% else %}text-green-600{% endif %}">
+                                        {{ details.severity }}
+                                    </span>
+                                </li>
+                                <li class="text-sm">
+                                    <span class="text-gray-600">Confidence:</span>
+                                    <span class="font-medium ml-2">{{ "%.1f"|format(details.confidence * 100) }}%</span>
+                                </li>
+                                {% if details.affected_areas %}
+                                <li class="text-sm">
+                                    <span class="text-gray-600">Affected Areas:</span>
+                                    <span class="font-medium ml-2">{{ details.affected_areas|join(', ') }}</span>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {# Recommendations Section #}
+                {% if result.recommendations %}
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-indigo-600">Personalized Recommendations</h3>
+                    
+                    {# Skincare Routine #}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        {# Morning Routine #}
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold mb-3">Morning Routine</h4>
+                            <ol class="list-decimal list-inside space-y-2">
+                                {% for step in result.recommendations.skincare_routine.morning %}
+                                <li class="text-sm text-gray-600">{{ step }}</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                        
+                        {# Evening Routine #}
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-semibold mb-3">Evening Routine</h4>
+                            <ol class="list-decimal list-inside space-y-2">
+                                {% for step in result.recommendations.skincare_routine.evening %}
+                                <li class="text-sm text-gray-600">{{ step }}</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                    </div>
+
+                    {# Product Recommendations #}
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h4 class="font-semibold mb-3">Recommended Products</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for type, product in result.recommendations.products.items() %}
+                            <div class="border-b border-gray-200 pb-2">
+                                <p class="text-sm">
+                                    <span class="font-medium capitalize">{{ type }}:</span>
+                                    <span class="text-gray-600">{{ product }}</span>
+                                </p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    {# Lifestyle Recommendations #}
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold mb-3">Lifestyle Recommendations</h4>
+                        <ul class="list-disc list-inside space-y-2">
+                            {% for tip in result.recommendations.lifestyle %}
+                            <li class="text-sm text-gray-600">{{ tip }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="mt-8 text-center">
+            <a href="{{ url_for('skin_analysis') }}" 
+               class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Analyze Another Image
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

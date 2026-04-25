@@ -1,0 +1,138 @@
+{# templates/skin_analysis.html #}
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <div class="max-w-3xl mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900 mb-8">Skin Analysis</h1>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white shadow rounded-lg p-6">
+                    <div class="text-center mb-4">
+                        <h2 class="mt-4 text-lg font-medium text-gray-900">Use Camera</h2>
+                        <p class="mt-2 text-sm text-gray-500">Take a photo for analysis</p>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <div id="camera-container" class="hidden">
+                            <video id="camera" class="w-full rounded-lg mb-4" autoplay playsinline></video>
+                            <button type="button" id="capture" class="w-full py-2 px-4 bg-indigo-600 text-white rounded-md">
+                                Capture Photo (<span id="capture-step">Front</span>)
+                            </button>
+                        </div>
+                        <button type="button" id="start-camera" class="w-full py-2 px-4 bg-indigo-600 text-white rounded-md">
+                            Start Camera
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white shadow rounded-lg p-6">
+                    <div class="text-center mb-4">
+                        <h2 class="mt-4 text-lg font-medium text-gray-900">Upload Photo</h2>
+                        <p class="mt-2 text-sm text-gray-500">Or upload an existing photo</p>
+                    </div>
+
+                    <form action="{{ url_for('skin_analysis') }}" method="POST" enctype="multipart/form-data">
+                        <div class="mt-4 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                            <div class="space-y-1 text-center">
+                                <input type="file" name="image" accept="image/*" class="hidden" id="file-upload">
+                                <label for="file-upload" class="cursor-pointer">
+                                    <span class="bg-indigo-600 text-white px-4 py-2 rounded-md">Select File</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="mt-4 w-full py-2 px-4 bg-indigo-600 text-white rounded-md">
+                            Upload & Analyze
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let stream = null;
+    let captureStep = 0;
+    let capturedImages = {};
+    const steps = ["Front", "Left", "Right"];
+    
+    document.getElementById('start-camera').addEventListener('click', async () => {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+            const video = document.getElementById('camera');
+            video.srcObject = stream;
+            document.getElementById('camera-container').classList.remove('hidden');
+            document.getElementById('start-camera').classList.add('hidden');
+        } catch (err) {
+            console.error('Camera error:', err);
+            alert('Unable to access camera. Please grant permissions.');
+        }
+    });
+    
+    document.getElementById('capture').addEventListener('click', () => {
+        const video = document.getElementById('camera');
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        
+        capturedImages[steps[captureStep]] = canvas.toDataURL('image/jpeg');
+        captureStep++;
+    
+        if (captureStep < steps.length) {
+            document.getElementById('capture-step').innerText = steps[captureStep];
+        } else {
+            submitImages();
+        }
+    });
+    
+    function submitImages() {
+        const submitButton = document.getElementById('capture');
+        submitButton.disabled = true;
+        submitButton.innerText = 'Processing...';
+        
+        fetch('{{ url_for("skin_analysis") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images: capturedImages })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Server response:", data);
+            if (data.success && data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                throw new Error('Invalid server response');
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert('Error processing images. Please try again.');
+            submitButton.disabled = false;
+            submitButton.innerText = 'Capture Photo (Front)';
+        })
+        .finally(() => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            document.getElementById('camera-container').classList.add('hidden');
+            document.getElementById('start-camera').classList.remove('hidden');
+        });
+    }
+</script>
+{% endblock %}
+
