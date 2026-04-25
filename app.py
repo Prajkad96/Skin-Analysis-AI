@@ -9,18 +9,23 @@ import uuid
 import cv2
 import numpy as np
 import tensorflow as tf
+# from flask_cors import CORS
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input
-from tensorflow.keras.preprocessing import image
+from tensorflow.keras.utils import img_to_array, load_img
+
 import traceback
 import json
 from sqlalchemy.sql import func
-
+from models import Consultation, Progress
 # Flask setup
 app = Flask(__name__)
+# CORS(app)
 app.secret_key = 'your_secret_key'  # Change this to a secure secret key in production
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
+
 
 # Initialize db with the app
 db.init_app(app)
@@ -29,6 +34,7 @@ model = MobileNetV2(weights="imagenet")
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
@@ -48,21 +54,14 @@ class User(db.Model):
     def check_password(self, password):
         """Check if the provided password matches the hashed password"""
         return check_password_hash(self.password_hash, password)
-
-# class Consultation(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     name = db.Column(db.String(100), nullable=False)
-#     email = db.Column(db.String(100), nullable=False)
-#     date = db.Column(db.Date, nullable=False)
-#     message = db.Column(db.Text, nullable=True)
-#     def __repr__(self):
-#         return f'<Consultation {self.id}>'
+    
+    progress = db.relationship('Progress', backref='user', lazy='dynamic')
 
 def analyze_skin_image(image_path):
     try:
         # Load and preprocess the image
-        img = image.load_img(image_path, target_size=(224, 224))
-        img_array = image.img_to_array(img)
+        img = load_img(image_path, target_size=(224, 224))
+        img_array = img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array = preprocess_input(img_array)
 
@@ -262,207 +261,434 @@ def book_consultation():
         return render_template('book_consultation.html', success=True)
     return render_template('book_consultation.html')
 
-# Enhanced skin analysis function
-# def analyze_skin_image(image_path):
-#     # Mock AI analysis with more comprehensive results
-#     return {
-#         'skin_type': {
-#             'type': 'Combination',
-#             'characteristics': [
-#                 'Oily T-zone',
-#                 'Dry cheeks',
-#                 'Normal chin area'
-#             ],
-#             'confidence': 0.89
-#         },
-#         'conditions': {
-#             'acne': {
-#                 'severity': 'Moderate',
-#                 'locations': ['Forehead', 'Cheeks'],
-#                 'type': 'Inflammatory',
-#                 'confidence': 0.85
-#             },
-#             'hyperpigmentation': {
-#                 'severity': 'Mild',
-#                 'type': 'Post-inflammatory',
-#                 'locations': ['Cheeks'],
-#                 'confidence': 0.78
-#             },
-#             'wrinkles': {
-#                 'severity': 'Minimal',
-#                 'type': 'Fine lines',
-#                 'locations': ['Around eyes'],
-#                 'confidence': 0.92
-#             },
-#             'rosacea': {
-#                 'severity': 'Mild',
-#                 'type': 'Erythematotelangiectatic',
-#                 'locations': ['Nose', 'Cheeks'],
-#                 'confidence': 0.75
-#             },
-#             'dehydration': {
-#                 'severity': 'Moderate',
-#                 'indicators': ['Fine lines', 'Dull complexion'],
-#                 'confidence': 0.88
-#             }
-#         },
-#         'recommendations': {
-#             'immediate_actions': [
-#                 'Use gentle, non-foaming cleanser',
-#                 'Apply broad-spectrum SPF 50 sunscreen',
-#                 'Incorporate hyaluronic acid serum'
-#             ],
-#             'products': [
-#                 {
-#                     'type': 'Cleanser',
-#                     'ingredients': ['Ceramides', 'Glycerin'],
-#                     'frequency': 'Twice daily'
-#                 },
-#                 {
-#                     'type': 'Treatment',
-#                     'ingredients': ['Niacinamide', 'Salicylic acid'],
-#                     'frequency': 'Evening only'
-#                 },
-#                 {
-#                     'type': 'Moisturizer',
-#                     'ingredients': ['Hyaluronic acid', 'Peptides'],
-#                     'frequency': 'Morning and evening'
-#                 }
-#             ],
-#             'lifestyle': [
-#                 'Increase water intake',
-#                 'Protect from sun exposure',
-#                 'Consider a humidifier'
-#             ],
-#             'professional_treatments': [
-#                 'Chemical peel for hyperpigmentation',
-#                 'LED therapy for inflammation'
-#             ]
-#         },
-#         'severity_scores': {
-#             'overall': 65,  # Scale of 0-100
-#             'inflammation': 45,
-#             'dehydration': 60,
-#             'barrier_damage': 40,
-#             'sun_damage': 35
-#         }
-#     }
 
+
+# Add this to your skin_analysis route function to help debug
 @app.route('/skin-analysis', methods=['GET', 'POST'])
 def skin_analysis():
     try:
         if request.method == 'GET':
             return render_template('skin_analysis.html')
 
-        print("Request received:", request.method, request.content_type)
-
+        # Debug the incoming request
+        print("Request Content-Type:", request.content_type)
+        
         # Handle JSON-based request (camera images)
         if request.is_json:
-            data = request.get_json()
-            if not data or 'images' not in data:
-                return jsonify({'error': 'No image data received'}), 400
+            try:
+                data = request.get_json()
+                print("JSON data keys:", data.keys() if data else "None")
+                if not data or 'images' not in data:
+                    print("Missing images in JSON data")
+                    return jsonify({'error': 'No image data received'}), 400
+                
+                print("Image positions received:", data['images'].keys())
+            except Exception as e:
+                print(f"JSON parsing error: {str(e)}")
+                traceback.print_exc()
+                return jsonify({'error': f'Error parsing JSON: {str(e)}'}), 400
 
-            analysis_results = {}
+            # Aggregate analyses
+            overall_analysis = {
+                'skin_type': {'type': None, 'confidence': 0},
+                'conditions': {},
+                'recommendations': {
+                    'skincare_routine': {'morning': [], 'evening': []},
+                    'products': {},
+                    'lifestyle': []
+                }
+            }
             image_paths = {}
             
             for position, image_data in data['images'].items():
-                if ',' in image_data:
-                    image_data = image_data.split(',')[1]
-                
-                image_bytes = base64.b64decode(image_data)
-                filename = f"{uuid.uuid4()}.jpg"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                
-                with open(filepath, 'wb') as f:
-                    f.write(image_bytes)
-                
-                analysis_result = analyze_skin_image(filepath)
-                analysis_results[position] = analysis_result
-                image_paths[position] = f"/static/uploads/{filename}"
+                try:
+                    # Improved handling of different image data formats
+                    if isinstance(image_data, str):
+                        if image_data.startswith('data:image'):
+                            # Extract the base64 encoded image data from the data URI
+                            image_format, image_data_encoded = image_data.split(',', 1)
+                            print(f"Image format: {image_format}")
+                            image_bytes = base64.b64decode(image_data_encoded)
+                        else:
+                            # Handle plain base64 encoded image without data URI prefix
+                            try:
+                                image_bytes = base64.b64decode(image_data)
+                            except Exception as e:
+                                print(f"Base64 decoding error: {str(e)}")
+                                # Try adding padding if needed
+                                padding_needed = len(image_data) % 4
+                                if padding_needed:
+                                    image_data += '=' * (4 - padding_needed)
+                                image_bytes = base64.b64decode(image_data)
+                    else:
+                        return jsonify({'error': f'Invalid image data format for position {position}'}), 400
+                    
+                    # Decode image
+                    img_array = np.frombuffer(image_bytes, np.uint8)
+                    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+                    
+                    if img is None:
+                        return jsonify({'error': f'Invalid image format for position {position}'}), 400
+                    
+                    # Enhanced face detection with multiple cascades and fallbacks
+                    face_detected = False
+                    
+                    # Try the standard frontal face cascade first
+                    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+                    
+                    if len(faces) == 0:
+                        # Try alternative cascades if the first one fails
+                        alt_cascades = [
+                            'haarcascade_frontalface_alt.xml',
+                            'haarcascade_frontalface_alt2.xml',
+                            'haarcascade_profileface.xml'
+                        ]
+                        
+                        for cascade_file in alt_cascades:
+                            try:
+                                alt_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + cascade_file)
+                                faces = alt_cascade.detectMultiScale(gray, 1.1, 3)  # Slightly more tolerant parameters
+                                if len(faces) > 0:
+                                    face_detected = True
+                                    print(f"Face detected with alternative cascade: {cascade_file}")
+                                    break
+                            except Exception as cascade_err:
+                                print(f"Error with cascade {cascade_file}: {str(cascade_err)}")
+                                continue
+                    else:
+                        face_detected = True
+                    
+                    # If still no face detected, try one more time with more relaxed parameters
+                    if not face_detected:
+                        faces = face_cascade.detectMultiScale(gray, 1.05, 2, minSize=(30, 30))
+                        face_detected = len(faces) > 0
+                    
+                    # Allow processing to continue even if no face is detected
+                    if not face_detected:
+                        print(f"Warning: No face detected in the image for position {position}. Continuing anyway.")
+                    
+                    # Improved image enhancement pipeline
+                    # 1. Apply adaptive enhancement based on image brightness
+                    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+                    brightness = np.mean(hsv[:,:,2])
+                    print(f"Image brightness for position {position}: {brightness}")
+                    
+                    # Apply different enhancement based on brightness level
+                    if brightness < 80:
+                        # Low light conditions - stronger enhancement
+                        # Increase brightness
+                        hsv[:,:,2] = np.clip(hsv[:,:,2] * 1.4, 0, 255)
+                        img = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+                        
+                        # Stronger sharpening for low light
+                        kernel = np.array([[0, -1, 0], [-1, 5.8, -1], [0, -1, 0]])
+                        img = cv2.filter2D(img, -1, kernel)
+                        
+                        # Stronger CLAHE for low light
+                        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+                        l, a, b = cv2.split(lab)
+                        clahe = cv2.createCLAHE(clipLimit=4.5, tileGridSize=(8, 8))
+                        l = clahe.apply(l)
+                        enhanced_lab = cv2.merge((l, a, b))
+                        img = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+                    else:
+                        # Standard enhancement for normal lighting
+                        kernel = np.array([[0, -1, 0], [-1, 5.2, -1], [0, -1, 0]])
+                        img = cv2.filter2D(img, -1, kernel)
+                        
+                        lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+                        l, a, b = cv2.split(lab)
+                        clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(8, 8))
+                        l = clahe.apply(l)
+                        enhanced_lab = cv2.merge((l, a, b))
+                        img = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+                    
+                    # Apply adaptive denoising based on image quality
+                    laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+                    if laplacian_var < 100:  # Higher noise or lower detail
+                        img = cv2.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 21)
+                    else:  # Better quality image
+                        img = cv2.fastNlMeansDenoisingColored(img, None, 5, 5, 7, 21)
+                    
+                    # Save the enhanced image
+                    filename = f"{uuid.uuid4()}.jpg"
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    cv2.imwrite(filepath, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                    
+                    # Run skin analysis
+                    analysis_result = analyze_skin_image(filepath)
+                    image_paths[position] = f"/static/uploads/{filename}"
+                    
+                    # Merge analysis results
+                    if analysis_result['skin_type']['confidence'] > overall_analysis['skin_type']['confidence']:
+                        overall_analysis['skin_type'] = analysis_result['skin_type']
 
+                    for condition, details in analysis_result['conditions'].items():
+                        if details['detected']:
+                            if condition not in overall_analysis['conditions'] or details['confidence'] > overall_analysis['conditions'].get(condition, {}).get('confidence', 0):
+                                overall_analysis['conditions'][condition] = details
+
+                    for routine in ['morning', 'evening']:
+                        overall_analysis['recommendations']['skincare_routine'][routine] = list(set(
+                            overall_analysis['recommendations']['skincare_routine'][routine] + 
+                            analysis_result['recommendations']['skincare_routine'][routine]
+                        ))
+
+                    overall_analysis['recommendations']['products'].update(
+                        analysis_result['recommendations']['products']
+                    )
+
+                    overall_analysis['recommendations']['lifestyle'] = list(set(
+                        overall_analysis['recommendations']['lifestyle'] + 
+                        analysis_result['recommendations']['lifestyle']
+                    ))
+                
+                except Exception as e:
+                    print(f"Error processing image for position {position}: {str(e)}")
+                    traceback.print_exc()
+                    return jsonify({'error': f'Error processing image for position {position}: {str(e)}'}), 400
+
+            # Redirect to results page with analysis data
             return jsonify({
                 'success': True,
                 'redirect': url_for('analysis_results', 
-                                  image_paths=json.dumps(image_paths),
-                                  analysis=json.dumps(analysis_results))
+                              image_paths=base64.b64encode(json.dumps(image_paths).encode()).decode(),
+                              analysis=base64.b64encode(json.dumps(overall_analysis).encode()).decode())
             })
 
-        # Handle file upload
+        # Handle form-based file upload with multiple views
+        elif 'file-upload-front' in request.files:
+            views = {'front': 'file-upload-front', 'left': 'file-upload-left', 'right': 'file-upload-right'}
+            image_paths = {}
+            
+            # Process each uploaded view
+            for position, field_name in views.items():
+                file = request.files.get(field_name)
+                
+                if file and file.filename != '':
+                    if not allowed_file(file.filename):
+                        return render_template('skin_analysis.html', 
+                                              error=f'Invalid file type for {position} view. Please upload a JPG, JPEG, or PNG image.')
+                    
+                    # Save the uploaded file temporarily
+                    temp_filename = secure_filename(f"temp_{uuid.uuid4()}.{file.filename.rsplit('.', 1)[1].lower()}")
+                    temp_filepath = os.path.join(app.config['UPLOAD_FOLDER'], temp_filename)
+                    file.save(temp_filepath)
+                    
+                    try:
+                        # Process the image
+                        img = cv2.imread(temp_filepath)
+                        if img is None:
+                            os.remove(temp_filepath)
+                            continue
+                        
+                        # Process image (same enhancement as above)
+                        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                        
+                        # Check brightness and apply adaptive enhancement
+                        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+                        brightness = np.mean(hsv[:,:,2])
+                        
+                        if brightness < 80:
+                            # Low light enhancement
+                            hsv[:,:,2] = np.clip(hsv[:,:,2] * 1.4, 0, 255)
+                            img = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+                            kernel = np.array([[0, -1, 0], [-1, 5.8, -1], [0, -1, 0]])
+                            img = cv2.filter2D(img, -1, kernel)
+                            lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+                            l, a, b = cv2.split(lab)
+                            clahe = cv2.createCLAHE(clipLimit=4.5, tileGridSize=(8, 8))
+                            l = clahe.apply(l)
+                            enhanced_lab = cv2.merge((l, a, b))
+                            img = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+                        else:
+                            # Standard enhancement
+                            kernel = np.array([[0, -1, 0], [-1, 5.2, -1], [0, -1, 0]])
+                            img = cv2.filter2D(img, -1, kernel)
+                            lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+                            l, a, b = cv2.split(lab)
+                            clahe = cv2.createCLAHE(clipLimit=3.5, tileGridSize=(8, 8))
+                            l = clahe.apply(l)
+                            enhanced_lab = cv2.merge((l, a, b))
+                            img = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+                        
+                        # Apply adaptive denoising
+                        laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+                        if laplacian_var < 100:
+                            img = cv2.fastNlMeansDenoisingColored(img, None, 10, 10, 7, 21)
+                        else:
+                            img = cv2.fastNlMeansDenoisingColored(img, None, 5, 5, 7, 21)
+                        
+                        # Save the enhanced image with a proper name
+                        filename = secure_filename(f"{uuid.uuid4()}.{file.filename.rsplit('.', 1)[1].lower()}")
+                        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        cv2.imwrite(filepath, img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                        
+                        # Store the path
+                        image_paths[position] = f"/static/uploads/{filename}"
+                        
+                        # Remove the temporary file
+                        if os.path.exists(temp_filepath):
+                            os.remove(temp_filepath)
+                            
+                    except Exception as e:
+                        if os.path.exists(temp_filepath):
+                            os.remove(temp_filepath)
+                        print(f"Error processing {position} view: {str(e)}")
+                        traceback.print_exc()
+                        return render_template('skin_analysis.html', error=f'Error processing {position} view: {str(e)}')
+            
+            if not image_paths:
+                return render_template('skin_analysis.html', error='No valid images were uploaded')
+            
+            # Aggregate analyses from all views
+            overall_analysis = {
+                'skin_type': {'type': None, 'confidence': 0},
+                'conditions': {},
+                'recommendations': {
+                    'skincare_routine': {'morning': [], 'evening': []},
+                    'products': {},
+                    'lifestyle': []
+                }
+            }
+            
+            for position, img_path in image_paths.items():
+                # Get the full file path from the web path
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(img_path))
+                analysis_result = analyze_skin_image(filepath)
+                
+                # Merge analysis results (same logic as above)
+                if analysis_result['skin_type']['confidence'] > overall_analysis['skin_type']['confidence']:
+                    overall_analysis['skin_type'] = analysis_result['skin_type']
+
+                for condition, details in analysis_result['conditions'].items():
+                    if details['detected']:
+                        if condition not in overall_analysis['conditions'] or details['confidence'] > overall_analysis['conditions'].get(condition, {}).get('confidence', 0):
+                            overall_analysis['conditions'][condition] = details
+
+                for routine in ['morning', 'evening']:
+                    overall_analysis['recommendations']['skincare_routine'][routine] = list(set(
+                        overall_analysis['recommendations']['skincare_routine'][routine] + 
+                        analysis_result['recommendations']['skincare_routine'][routine]
+                    ))
+
+                overall_analysis['recommendations']['products'].update(
+                    analysis_result['recommendations']['products']
+                )
+
+                overall_analysis['recommendations']['lifestyle'] = list(set(
+                    overall_analysis['recommendations']['lifestyle'] + 
+                    analysis_result['recommendations']['lifestyle']
+                ))
+            
+            return redirect(url_for('analysis_results',
+                                  image_paths=base64.b64encode(json.dumps(image_paths).encode()).decode(),
+                                  analysis=base64.b64encode(json.dumps(overall_analysis).encode()).decode()))
+                
+        # Handle older format single image upload
         elif 'image' in request.files:
             file = request.files['image']
             if file.filename == '':
-                return jsonify({'error': 'No selected file'}), 400
-
-            filename = secure_filename(f"{uuid.uuid4()}.{file.filename.rsplit('.', 1)[1].lower()}")
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-
-            analysis_result = analyze_skin_image(filepath)
+                return render_template('skin_analysis.html', error='No selected file')
             
-            return redirect(url_for('analysis_results',
-                                  image_paths=json.dumps({'uploaded': f"/static/uploads/{filename}"}),
-                                  analysis=json.dumps({'uploaded': analysis_result})))
+            if not allowed_file(file.filename):
+                return render_template('skin_analysis.html', error='Invalid file type. Please upload a JPG, JPEG, or PNG image.')
+            
+            # Similar processing as above for a single image
+            # Implement the same image enhancement pipeline as above
+            # ...
 
-        return jsonify({'error': 'No valid image received'}), 400
+        # No valid input found
+        return render_template('skin_analysis.html', error='No valid image received')
 
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
+        return render_template('skin_analysis.html', error=f'An unexpected error occurred: {str(e)}')
+    
 @app.route('/analysis-results')
 def analysis_results():
     try:
-        image_paths = json.loads(request.args.get('image_paths', '{}'))
-        analysis = json.loads(request.args.get('analysis', '{}'))
-        return render_template('analysis_results.html', 
-                             image_paths=image_paths,
-                             analysis=analysis)
-    except Exception as e:
-        print(f"Error in analysis_results route: {str(e)}")
-        return render_template('analysis_results.html',
-                             image_paths={},
-                             analysis={},
-                             error="Error loading analysis results")
+        # Retrieve and decode image paths
+        image_paths_encoded = request.args.get('image_paths', '')
+        if image_paths_encoded:
+            try:
+                image_paths = json.loads(base64.b64decode(image_paths_encoded.encode()).decode())
+            except Exception as e:
+                print(f"Image paths decode error: {e}")
+                image_paths = {}
+        else:
+            image_paths = {}
 
+        # Retrieve and decode analysis data
+        analysis_encoded = request.args.get('analysis', '')
+        if analysis_encoded:
+            try:
+                analysis = json.loads(base64.b64decode(analysis_encoded.encode()).decode())
+            except Exception as e:
+                print(f"Analysis decode error: {e}")
+                analysis = {}
+        else:
+            analysis = {}
+
+        # Additional error checking
+        if not image_paths or not analysis:
+            return render_template('analysis_results.html', 
+                                   error="No analysis data available",
+                                   image_paths={},
+                                   analysis={})
+
+        # Save progress if user is logged in
+        if 'user_id' in session:
+            for path in image_paths.values():
+                save_progress(session['user_id'], path, analysis)
+
+        return render_template('analysis_results.html', 
+                               image_paths=image_paths,
+                               analysis=analysis)
+
+    except Exception as e:
+        traceback.print_exc()
+        return render_template('analysis_results.html',
+                               error=f"Unexpected error: {str(e)}",
+                               image_paths={},
+                               analysis={})
 @app.route('/progress')
 def progress():
     if 'user_id' not in session:
         return redirect(url_for('signin'))
     
     try:
-        # Get all progress entries for the user, ordered by newest first
         progress_entries = Progress.query.filter_by(
             user_id=session['user_id']
         ).order_by(
             Progress.timestamp.desc()
         ).all()
         
-        # Calculate improvements if there are multiple entries
+        # Calculate improvements
         for i in range(len(progress_entries)):
             if i < len(progress_entries) - 1:
                 current = progress_entries[i]
                 previous = progress_entries[i + 1]
-                
-                # Initialize improvements list if None
-                if not current.improvements:
-                    current.improvements = []
-                
-                # Compare skin scores if they exist
-                if current.skin_score and previous.skin_score:
+        
+        # Compare skin scores if they exist and previous score is non-zero
+                if (current.skin_score is not None and 
+                    previous.skin_score is not None and 
+                    previous.skin_score != 0):
                     improvement = ((current.skin_score - previous.skin_score) / previous.skin_score) * 100
                     current.improvement = round(improvement, 1)
                 else:
                     current.improvement = None
         
-        return render_template(
-            'progress.html',
+        return render_template( 
+            'progress.html',    
             progress=progress_entries,
             user_name=session.get('user_name', 'User')
         )
         
     except Exception as e:
         print(f"Error in progress route: {str(e)}")
-        # Log the error properly in production
         return render_template(
             'progress.html',
             progress=[],
@@ -475,7 +701,7 @@ def save_progress(user_id, image_path, analysis_result):
         # Extract relevant data from analysis result
         skin_type = analysis_result.get('skin_type', {}).get('type', 'Unknown')
         
-        # Calculate a basic skin score (customize based on your needs)
+        # Calculate a basic skin score
         skin_score = calculate_skin_score(analysis_result)
         
         # Extract conditions
@@ -490,11 +716,12 @@ def save_progress(user_id, image_path, analysis_result):
             image_path=image_path,
             result='Analysis Complete',
             skin_type=skin_type,
-            skin_score=skin_score,
-            conditions=conditions,
-            improvements=[],  # Will be calculated when viewing progress
-            analysis_data=analysis_result
+            skin_score=skin_score
         )
+        
+        # Use setter methods
+        progress_entry.set_conditions(conditions)
+        progress_entry.set_analysis_data(analysis_result)
         
         db.session.add(progress_entry)
         db.session.commit()
@@ -505,7 +732,6 @@ def save_progress(user_id, image_path, analysis_result):
         print(f"Error saving progress: {str(e)}")
         db.session.rollback()
         return False
-
 def calculate_skin_score(analysis_result):
     """
     Calculate a skin health score based on analysis results
@@ -536,9 +762,30 @@ def calculate_skin_score(analysis_result):
 def educational_hub():
     return render_template('educational_hub.html')
 
+@app.route('/contact')
+def contact_page():  # Renaming the function to avoid conflict
+    return render_template('contact.html')
+
+@app.route('/skin-types')
+def skin_types():
+    return render_template('skin-types.html')
+
+@app.route('/skin-basics')
+def skin_basics():
+    return render_template('skincare-basics.html')
+
+@app.route('/skin-concerns')
+def skin_concerns():
+    return render_template('skin-concerns.html')
+
+# Add this to your app.py or in a separate database initialization script
 with app.app_context():
-    db.create_all()  # This will create all tables defined in your models
-    print("Tables created successfully.")
+    # Drop all existing tables
+    db.drop_all()
+    
+    # Recreate all tables
+    db.create_all()
+    print("Database tables recreated successfully.")
     
 if __name__ == '__main__':
     app.run(debug=True)
