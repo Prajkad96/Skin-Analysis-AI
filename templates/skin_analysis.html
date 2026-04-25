@@ -6,18 +6,84 @@
 <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
     <div class="px-4 py-6 sm:px-0">
         <div class="max-w-3xl mx-auto">
-            <h1 class="text-3xl font-bold text-gray-900 mb-8">Skin Analysis</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-4">Skin Analysis</h1>
+            
+            {% if error %}
+            <div class="mb-4 bg-red-50 border border-red-200 text-red-800 rounded-md p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm">{{ error }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700">
+                            <strong>For best results:</strong>
+                            <ul class="list-disc ml-5 mt-1">
+                                <li>Use a <strong>plain light-colored background</strong> (white wall ideal)</li>
+                                <li>Position yourself in good lighting (natural light works best)</li>
+                                <li>Keep your face centered in the guide overlay</li>
+                                <li>Take front and side views for comprehensive analysis</li>
+                                <li>Avoid heavy makeup for most accurate results</li>
+                            </ul>
+                        </p>
+                    </div>
+                </div>
+            </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-white shadow rounded-lg p-6">
                     <div class="text-center mb-4">
                         <h2 class="mt-4 text-lg font-medium text-gray-900">Use Camera</h2>
-                        <p class="mt-2 text-sm text-gray-500">Take a photo for analysis</p>
+                        <p class="mt-2 text-sm text-gray-500">Take photos for complete analysis</p>
                     </div>
                     
                     <div class="mt-4">
                         <div id="camera-container" class="hidden">
-                            <video id="camera" class="w-full rounded-lg mb-4" autoplay playsinline></video>
+                            <div class="relative w-full rounded-lg mb-4 bg-gray-100">
+                                <!-- Background guide overlay -->
+                                <div id="face-guide-overlay" class="absolute top-0 left-0 w-full h-full pointer-events-none z-10 flex flex-col items-center justify-center">
+                                    <div class="border-2 border-dashed border-blue-400 rounded-full w-3/5 h-4/5 flex items-center justify-center opacity-70">
+                                        <div class="text-sm text-blue-500 bg-white bg-opacity-70 px-2 py-1 rounded">Position face here</div>
+                                    </div>
+                                </div>
+                                <video id="camera" class="w-full rounded-lg" autoplay playsinline></video>
+                            </div>
+                            
+                            <!-- Background selector -->
+                            <div class="mb-4 p-2 bg-gray-50 rounded-md">
+                                <div class="text-sm font-medium text-gray-700 mb-2">Background Selection:</div>
+                                <div class="flex space-x-2">
+                                    <button id="bg-plain" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm active">Plain Wall</button>
+                                    <button id="bg-virtual" class="px-3 py-1 bg-white border border-gray-300 rounded-md text-sm">Virtual Background</button>
+                                </div>
+                                <div id="virtual-bg-options" class="hidden mt-2 flex space-x-2">
+                                    <div class="h-6 w-6 bg-white border border-gray-300 rounded cursor-pointer bg-option active" data-color="white"></div>
+                                    <div class="h-6 w-6 bg-blue-100 border border-gray-300 rounded cursor-pointer bg-option" data-color="blue-light"></div>
+                                    <div class="h-6 w-6 bg-gray-200 border border-gray-300 rounded cursor-pointer bg-option" data-color="gray-light"></div>
+                                </div>
+                            </div>
+                            
+                            <div id="capture-preview" class="hidden mb-4">
+                                <div class="text-center mb-2 text-sm font-medium text-gray-700">Preview:</div>
+                                <div class="flex overflow-x-auto space-x-2 pb-2">
+                                    <!-- Preview images will be inserted here -->
+                                </div>
+                            </div>
                             <button type="button" id="capture" class="w-full py-2 px-4 bg-indigo-600 text-white rounded-md">
                                 Capture Photo (<span id="capture-step">Front</span>)
                             </button>
@@ -30,21 +96,85 @@
 
                 <div class="bg-white shadow rounded-lg p-6">
                     <div class="text-center mb-4">
-                        <h2 class="mt-4 text-lg font-medium text-gray-900">Upload Photo</h2>
-                        <p class="mt-2 text-sm text-gray-500">Or upload an existing photo</p>
+                        <h2 class="mt-4 text-lg font-medium text-gray-900">Upload Photos</h2>
+                        <p id="upload-instruction" class="mt-2 text-sm text-gray-500">Please upload front view first</p>
                     </div>
-
-                    <form action="{{ url_for('skin_analysis') }}" method="POST" enctype="multipart/form-data">
-                        <div class="mt-4 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-                            <div class="space-y-1 text-center">
-                                <input type="file" name="image" accept="image/*" class="hidden" id="file-upload">
-                                <label for="file-upload" class="cursor-pointer">
-                                    <span class="bg-indigo-600 text-white px-4 py-2 rounded-md">Select File</span>
-                                </label>
+                    
+                    <!-- Background recommendation -->
+                    <div class="bg-yellow-50 border border-yellow-200 p-3 rounded-md mb-4">
+                        <p class="text-sm text-yellow-800">
+                            <strong>Recommended:</strong> Take photos against a plain light-colored wall for best results.
+                        </p>
+                    </div>
+                
+                    <form id="upload-form" action="{{ url_for('skin_analysis') }}" method="POST" enctype="multipart/form-data">
+                        <div class="mt-4 space-y-4">
+                            <!-- Front Photo Upload -->
+                            <div class="border border-gray-300 rounded-md p-4">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm font-medium text-gray-700">Front View</span>
+                                </div>
+                                <div class="flex justify-center px-6 pt-3 pb-4 border-2 border-gray-300 border-dashed rounded-md">
+                                    <div class="space-y-1 text-center">
+                                        <input type="file" name="image_front" accept="image/jpeg,image/png,image/jpg" class="hidden" id="file-upload-front" onchange="previewImage(this, 'front');">
+                                        <label for="file-upload-front" class="cursor-pointer">
+                                            <span class="bg-indigo-600 text-white px-3 py-1 rounded-md">Select File</span>
+                                        </label>
+                                        <p id="file-name-front" class="text-sm text-gray-500 mt-2">No file selected</p>
+                                        <div id="image-preview-container-front" class="mt-3 hidden">
+                                            <img id="image-preview-front" class="max-h-32 mx-auto rounded" alt="Front Preview">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Left Photo Upload (initially hidden) -->
+                            <div id="left-view-container" class="border border-gray-300 rounded-md p-4">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm font-medium text-gray-700">Left View (Optional)</span>
+                                </div>
+                                <div class="flex justify-center px-6 pt-3 pb-4 border-2 border-gray-300 border-dashed rounded-md">
+                                    <div class="space-y-1 text-center">
+                                        <input type="file" name="image_left" accept="image/jpeg,image/png,image/jpg" class="hidden" id="file-upload-left" onchange="previewImage(this, 'left');">
+                                        <label for="file-upload-left" class="cursor-pointer">
+                                            <span class="bg-indigo-600 text-white px-3 py-1 rounded-md">Select File</span>
+                                        </label>
+                                        <p id="file-name-left" class="text-sm text-gray-500 mt-2">No file selected</p>
+                                        <div id="image-preview-container-left" class="mt-3 hidden">
+                                            <img id="image-preview-left" class="max-h-32 mx-auto rounded" alt="Left Preview">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Photo Upload (initially hidden) -->
+                            <div id="right-view-container" class="border border-gray-300 rounded-md p-4">
+                                <div class="text-center mb-2">
+                                    <span class="text-sm font-medium text-gray-700">Right View (Optional)</span>
+                                </div>
+                                <div class="flex justify-center px-6 pt-3 pb-4 border-2 border-gray-300 border-dashed rounded-md">
+                                    <div class="space-y-1 text-center">
+                                        <input type="file" name="image_right" accept="image/jpeg,image/png,image/jpg" class="hidden" id="file-upload-right" onchange="previewImage(this, 'right');">
+                                        <label for="file-upload-right" class="cursor-pointer">
+                                            <span class="bg-indigo-600 text-white px-3 py-1 rounded-md">Select File</span>
+                                        </label>
+                                        <p id="file-name-right" class="text-sm text-gray-500 mt-2">No file selected</p>
+                                        <div id="image-preview-container-right" class="mt-3 hidden">
+                                            <img id="image-preview-right" class="max-h-32 mx-auto rounded" alt="Right Preview">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <button type="submit" class="mt-4 w-full py-2 px-4 bg-indigo-600 text-white rounded-md">
-                            Upload & Analyze
+                        
+                        <!-- Help text -->
+                        <div class="mt-3 mb-2 p-2 bg-gray-50 rounded-md">
+                            <p class="text-sm text-gray-500">* Front view required, side views recommended for better analysis</p>
+                            <p class="text-sm text-gray-500 mt-1">* If images aren't processing, try a plainer background and better lighting</p>
+                        </div>
+                        
+                        <button type="submit" id="upload-button" class="mt-4 w-full py-2 px-4 bg-gray-400 text-white rounded-md" disabled>
+                            Continue to Analysis
                         </button>
                     </form>
                 </div>
@@ -54,85 +184,570 @@
 </div>
 
 <script>
+// Modified camera and face detection implementation using face-api.js
+document.addEventListener('DOMContentLoaded', async function() {
+    // Camera handling variables
     let stream = null;
-    let captureStep = 0;
-    let capturedImages = {};
-    const steps = ["Front", "Left", "Right"];
+    const cameraEl = document.getElementById('camera');
+    const startCameraBtn = document.getElementById('start-camera');
+    const cameraContainer = document.getElementById('camera-container');
+    const captureBtn = document.getElementById('capture');
+    const captureStep = document.getElementById('capture-step');
+    const capturePreview = document.getElementById('capture-preview');
+    const uploadButton = document.getElementById('upload-button');
+    const bgPlainBtn = document.getElementById('bg-plain');
+    const bgVirtualBtn = document.getElementById('bg-virtual');
+    const virtualBgOptions = document.getElementById('virtual-bg-options');
     
-    document.getElementById('start-camera').addEventListener('click', async () => {
+    document.getElementById('file-upload-front').addEventListener('change', function() {
+        previewImage(this, 'front');
+    });
+    
+    document.getElementById('file-upload-left').addEventListener('change', function() {
+        previewImage(this, 'left');
+    });
+    
+    document.getElementById('file-upload-right').addEventListener('change', function() {
+        previewImage(this, 'right');
+    });
+    // Face detection variables
+    let modelsLoaded = false;
+    let faceDetectionInterval = null;
+    let faceDetected = false;
+    
+    // Captured photos storage
+    const capturedPhotos = {
+        front: null,
+        left: null,
+        right: null
+    };
+    
+    // Current capture mode
+    let captureMode = 'front';
+    
+    // Background settings
+    let usingVirtualBackground = false;
+    let currentBackground = 'white';
+    
+// Add these event listeners for background options
+bgPlainBtn.addEventListener('click', function() {
+    usingVirtualBackground = false;
+    virtualBgOptions.classList.add('hidden');
+    bgPlainBtn.classList.add('active');
+    bgVirtualBtn.classList.remove('active');
+});
+
+bgVirtualBtn.addEventListener('click', function() {
+    usingVirtualBackground = true;
+    virtualBgOptions.classList.remove('hidden');
+    bgVirtualBtn.classList.add('active');
+    bgPlainBtn.classList.remove('active');
+});
+
+// Add event listeners for background color options
+document.querySelectorAll('.bg-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelectorAll('.bg-option').forEach(opt => opt.classList.remove('active'));
+        this.classList.add('active');
+        currentBackground = this.dataset.color;
+    });
+});
+
+    // Function to validate faces in uploaded images
+    async function validateFaceInImage(imageUrl, view, validationElement) {
+        if (!modelsLoaded || !window.faceapi) {
+            validationElement.textContent = "Face validation not available. Proceeding anyway.";
+            validationElement.classList.add('text-yellow-600');
+            validationElement.classList.remove('text-green-600', 'text-red-600', 'text-gray-500');
+            return;
+        }
+        
         try {
-            stream = await navigator.mediaDevices.getUserMedia({ 
-                video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
+            const img = new Image();
+            img.src = imageUrl;
+            
+            // Wait for image to load
+            await new Promise(resolve => {
+                img.onload = resolve;
             });
-            const video = document.getElementById('camera');
-            video.srcObject = stream;
-            document.getElementById('camera-container').classList.remove('hidden');
-            document.getElementById('start-camera').classList.add('hidden');
-        } catch (err) {
-            console.error('Camera error:', err);
-            alert('Unable to access camera. Please grant permissions.');
-        }
-    });
-    
-    document.getElementById('capture').addEventListener('click', () => {
-        const video = document.getElementById('camera');
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        
-        capturedImages[steps[captureStep]] = canvas.toDataURL('image/jpeg');
-        captureStep++;
-    
-        if (captureStep < steps.length) {
-            document.getElementById('capture-step').innerText = steps[captureStep];
-        } else {
-            submitImages();
-        }
-    });
-    
-    function submitImages() {
-        const submitButton = document.getElementById('capture');
-        submitButton.disabled = true;
-        submitButton.innerText = 'Processing...';
-        
-        fetch('{{ url_for("skin_analysis") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images: capturedImages })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("Server response:", data);
-            if (data.success && data.redirect) {
-                window.location.href = data.redirect;
+            
+            // Use tiny face detector for better performance
+            const options = new faceapi.TinyFaceDetectorOptions({ 
+                inputSize: 224, 
+                scoreThreshold: 0.5 
+            });
+            
+            const detections = await faceapi.detectAllFaces(img, options);
+            
+            if (detections && detections.length > 0) {
+                validationElement.textContent = "✓ Valid face detected";
+                validationElement.classList.add('text-green-600');
+                validationElement.classList.remove('text-red-600', 'text-yellow-600', 'text-gray-500');
             } else {
-                throw new Error('Invalid server response');
+                validationElement.textContent = "⚠ No face detected. Please try another image.";
+                validationElement.classList.add('text-red-600');
+                validationElement.classList.remove('text-green-600', 'text-yellow-600', 'text-gray-500');
+                
+                // Optionally disable the upload button
+                if (view === 'front') {
+                    uploadButton.disabled = true;
+                    uploadButton.classList.add('bg-gray-400');
+                    uploadButton.classList.remove('bg-indigo-600');
+                }
+            }
+        } catch (e) {
+            console.error("Face validation error:", e);
+            validationElement.textContent = "Unable to validate face. Proceeding anyway.";
+            validationElement.classList.add('text-yellow-600');
+            validationElement.classList.remove('text-red-600', 'text-green-600', 'text-gray-500');
+        }
+    }
+// Add this function to your script
+function previewImage(input, view) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const previewContainer = document.getElementById(`image-preview-container-${view}`);
+            const previewImage = document.getElementById(`image-preview-${view}`);
+            const fileName = document.getElementById(`file-name-${view}`);
+            
+            previewImage.src = e.target.result;
+            previewContainer.classList.remove('hidden');
+            fileName.textContent = input.files[0].name;
+            
+            // Create or update validation element
+            let validationElement = document.getElementById(`validation-${view}`);
+            if (!validationElement) {
+                validationElement = document.createElement('p');
+                validationElement.id = `validation-${view}`;
+                validationElement.className = 'text-sm mt-2 text-gray-500';
+                validationElement.textContent = 'Validating image...';
+                previewContainer.appendChild(validationElement);
+            }
+            
+            // Validate face in image
+            validateFaceInImage(e.target.result, view, validationElement);
+            
+            // Enable upload button if front image is provided
+            if (view === 'front') {
+                uploadButton.disabled = false;
+                uploadButton.classList.remove('bg-gray-400');
+                uploadButton.classList.add('bg-indigo-600');
+            }
+        };
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+    
+// Improve face-api.js loading with better error handling
+async function loadFaceDetectionModels() {
+    try {
+        console.log("Starting to load face-api.js");
+        
+        // First, add script tags to load face-api.js
+        if (!window.faceapi) {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
+            script.onerror = function() {
+                throw new Error("Failed to load face-api.js script");
+            };
+            document.head.appendChild(script);
+            
+            // Wait for script to load
+            await new Promise((resolve, reject) => {
+                script.onload = resolve;
+                script.onerror = reject;
+            });
+            
+            console.log("face-api.js script loaded successfully");
+        }
+        
+        // Create models directory div to show loading status
+        const modelStatus = document.createElement('div');
+        modelStatus.id = 'model-status';
+        modelStatus.className = 'text-sm text-gray-500 mt-2';
+        modelStatus.textContent = 'Loading face detection models...';
+        startCameraBtn.parentNode.appendChild(modelStatus);
+        
+        // Check if the models directory exists
+        console.log("Attempting to load face detector model...");
+        
+        // Load required models for face detection
+        await faceapi.loadTinyFaceDetectorModel('/static/models/tiny_face_detector');
+
+        
+        modelsLoaded = true;
+        modelStatus.textContent = 'Face detection ready';
+        modelStatus.className = 'text-sm text-green-500 mt-2';
+        console.log("Face detection models loaded successfully");
+        
+    } catch (e) {
+        console.error("Error loading face-api.js models:", e);
+        const modelStatus = document.getElementById('model-status') || 
+                           document.createElement('div');
+        
+        if (!modelStatus.id) {
+            modelStatus.id = 'model-status';
+            startCameraBtn.parentNode.appendChild(modelStatus);
+        }
+        
+        modelStatus.textContent = 'Could not load face detection. Proceeding without it.';
+        modelStatus.className = 'text-sm text-yellow-500 mt-2';
+    }
+}
+
+// Add this function to check if models directory exists
+function checkModelsDirectory() {
+    return new Promise((resolve, reject) => {
+        const testRequest = new XMLHttpRequest();
+        testRequest.open('HEAD', '/models/tiny_face_detector/model.json', true);
+        testRequest.onreadystatechange = function() {
+            if (this.readyState === 4) {
+                if (this.status === 200) {
+                    console.log("Models directory verified");
+                    resolve(true);
+                } else {
+                    console.error("Models directory not found:", this.status);
+                    reject(new Error(`Models directory not found: ${this.status}`));
+                }
+            }
+        };
+        testRequest.send();
+    });
+}
+    // Load models when page loads
+    loadFaceDetectionModels();
+
+   // Replace the problematic event listener section with this unified version
+startCameraBtn.addEventListener('click', async function() {
+    console.log("Camera button clicked");
+    
+    try {
+        console.log("Requesting camera access...");
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: "user"
+            },
+            audio: false
+        });
+        
+        console.log("Camera access successful, setting up video stream");
+        cameraEl.srcObject = stream;
+        cameraContainer.classList.remove('hidden');
+        startCameraBtn.classList.add('hidden');
+        
+        // Start face detection once video is playing
+        cameraEl.addEventListener('loadedmetadata', function() {
+            console.log("Video element loaded metadata, starting face detection");
+            // Start face detection after a short delay to ensure video is ready
+            setTimeout(() => {
+                startFaceDetection();
+            }, 1000);
+        });
+        
+    } catch (err) {
+        console.error("Error accessing camera:", err.name, err.message);
+        
+        let errorMessage = "Unable to access camera. ";
+        
+        if (err.name === "NotAllowedError") {
+            errorMessage += "Camera permission was denied. Please allow camera access in your browser settings.";
+        } else if (err.name === "NotFoundError") {
+            errorMessage += "No camera found on this device.";
+        } else if (err.name === "NotReadableError") {
+            errorMessage += "Camera is already in use by another application.";
+        } else {
+            errorMessage += "Please check permissions or try uploading photos instead.";
+        }
+        
+        showError(errorMessage);
+    }
+});
+
+    
+    // Function to detect faces in video stream using face-api.js
+    function startFaceDetection() {
+        if (!modelsLoaded || !window.faceapi) {
+            console.log("Face detection not available, proceeding without it");
+            return;
+        }
+        
+        faceDetectionInterval = setInterval(async () => {
+            try {
+                if (!cameraEl.videoWidth) {
+                    console.log("Video not ready yet");
+                    return; // Skip this iteration if video isn't ready
+                }
+                
+                // Use tiny face detector for better performance
+                const options = new faceapi.TinyFaceDetectorOptions({ 
+                    inputSize: 224, 
+                    scoreThreshold: 0.5 
+                });
+                
+                const detections = await faceapi.detectAllFaces(cameraEl, options);
+                
+                if (detections && detections.length > 0) {
+                    faceDetected = true;
+                    document.getElementById('face-guide-overlay').classList.add('border-green-500');
+                    document.getElementById('face-guide-overlay').classList.remove('border-blue-400');
+                } else {
+                    faceDetected = false;
+                    document.getElementById('face-guide-overlay').classList.add('border-blue-400');
+                    document.getElementById('face-guide-overlay').classList.remove('border-green-500');
+                }
+            } catch (e) {
+                console.error("Face detection error:", e);
+                // Don't clear the interval, just log the error and continue
+            }
+        }, 500);
+    }
+    
+    // Function to capture photo from camera
+    captureBtn.addEventListener('click', function() {
+        // Create canvas for capture
+        const canvas = document.createElement('canvas');
+        canvas.width = cameraEl.videoWidth;
+        canvas.height = cameraEl.videoHeight;
+        const ctx = canvas.getContext('2d');
+        
+        // Check if we need to apply virtual background
+        if (usingVirtualBackground) {
+            // Fill canvas with selected background color
+            switch(currentBackground) {
+                case 'white':
+                    ctx.fillStyle = '#FFFFFF';
+                    break;
+                case 'blue-light': 
+                    ctx.fillStyle = '#DBEAFE';
+                    break;
+                case 'gray-light':
+                    ctx.fillStyle = '#E5E7EB';
+                    break;
+                default:
+                    ctx.fillStyle = '#FFFFFF';
+            }
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Apply facial detection and masking here
+            // For now we'll use a simplified approach - draw video on the 
+            // virtual background but in production use more sophisticated segmentation
+            ctx.drawImage(cameraEl, 0, 0);
+        } else {
+            // Just capture the frame as is
+            ctx.drawImage(cameraEl, 0, 0);
+        }
+        
+        // Enhance image quality for better skin analysis
+        enhanceImageForSkinAnalysis(canvas);
+        
+        // Convert to base64 for upload
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.92);
+        capturedPhotos[captureMode] = {
+            base64: imageBase64,
+            url: imageBase64
+        };
+        
+        // Show preview
+        capturePreview.classList.remove('hidden');
+        
+        // Create or update preview image
+        let previewContainer = document.querySelector(`.preview-${captureMode}`);
+        if (!previewContainer) {
+            previewContainer = document.createElement('div');
+            previewContainer.className = `preview-${captureMode} relative`;
+            
+            const img = document.createElement('img');
+            img.src = imageBase64;
+            img.className = 'h-20 w-20 object-cover rounded';
+            img.alt = `${captureMode} view`;
+            
+            const label = document.createElement('div');
+            label.className = 'absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs py-1 text-center';
+            label.textContent = capitalizeFirstLetter(captureMode);
+            
+            previewContainer.appendChild(img);
+            previewContainer.appendChild(label);
+            capturePreview.appendChild(previewContainer);
+        } else {
+            const img = previewContainer.querySelector('img');
+            img.src = imageBase64;
+        }
+        
+        // Check if we have enough photos to submit
+        if (capturedPhotos.front) {
+            // Add button for direct submission
+            if (!document.getElementById('submit-camera-photos')) {
+                const submitBtn = document.createElement('button');
+                submitBtn.id = 'submit-camera-photos';
+                submitBtn.className = 'mt-4 w-full py-2 px-4 bg-indigo-600 text-white rounded-md';
+                submitBtn.textContent = 'Submit Photos for Analysis';
+                submitBtn.addEventListener('click', submitCameraPhotos);
+                capturePreview.parentNode.appendChild(submitBtn);
+            }
+        }
+        
+        // Update capture mode for next shot
+        updateCaptureMode();
+    });
+ 
+    
+
+    // Function to enhance image quality for skin analysis (unchanged)
+    function enhanceImageForSkinAnalysis(canvas) {
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        // Calculate average brightness
+        let totalBrightness = 0;
+        for (let i = 0; i < data.length; i += 4) {
+            // Simple RGB to brightness (luminance)
+            const brightness = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            totalBrightness += brightness;
+        }
+        const avgBrightness = totalBrightness / (data.length / 4);
+        
+        // Adjust based on brightness level - similar to backend's approach
+        const brightnessAdjust = avgBrightness < 80 ? 1.3 : 1.1;
+        const contrastAdjust = avgBrightness < 80 ? 1.4 : 1.2;
+        
+        // Apply enhancement
+        for (let i = 0; i < data.length; i += 4) {
+            // Brightness adjustment
+            data[i] = Math.min(255, data[i] * brightnessAdjust);
+            data[i+1] = Math.min(255, data[i+1] * brightnessAdjust);
+            data[i+2] = Math.min(255, data[i+2] * brightnessAdjust);
+            
+            // Simple contrast adjustment
+            for (let j = 0; j < 3; j++) {
+                data[i+j] = Math.min(255, Math.max(0, 
+                    128 + contrastAdjust * (data[i+j] - 128)
+                ));
+            }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        return canvas;
+    }
+    
+    // Function to update capture mode (unchanged)
+    function updateCaptureMode() {
+        if (captureMode === 'front') {
+            captureMode = 'left';
+            captureStep.textContent = 'Left Side';
+        } else if (captureMode === 'left') {
+            captureMode = 'right';
+            captureStep.textContent = 'Right Side';
+        } else {
+            captureMode = 'front';
+            captureStep.textContent = 'Front';
+        }
+    }
+    
+    // Function to submit photos captured from camera (unchanged)
+    function submitCameraPhotos() {
+        // Implementation remains the same...
+        // Disable the button to prevent double submission
+        const submitBtn = document.getElementById('submit-camera-photos');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing...';
+        
+        // Prepare data for submission
+        const imagesToSubmit = {};
+        
+        // Only include photos that were actually captured
+        for (const [position, data] of Object.entries(capturedPhotos)) {
+            if (data && data.base64) {
+                imagesToSubmit[position] = data.base64;
+            }
+        }
+        
+        // Check if we have at least the front photo
+        if (!imagesToSubmit.front) {
+            showError("Front view photo is required for analysis");
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Photos for Analysis';
+            return;
+        }
+        
+        // Send to backend
+        fetch('/skin-analysis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                images: imagesToSubmit
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                showError(data.error);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Photos for Analysis';
+            } else if (data.redirect) {
+                // Redirect to results page
+                window.location.href = data.redirect;
             }
         })
         .catch(error => {
-            console.error("Error:", error);
-            alert('Error processing images. Please try again.');
-            submitButton.disabled = false;
-            submitButton.innerText = 'Capture Photo (Front)';
-        })
-        .finally(() => {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            document.getElementById('camera-container').classList.add('hidden');
-            document.getElementById('start-camera').classList.remove('hidden');
+            console.error('Error submitting photos:', error);
+            showError("Failed to submit photos. Please try again or use the upload option.");
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Photos for Analysis';
         });
     }
+    
+    // Helper function for showing errors (unchanged)
+    function showError(message) {
+        console.error("Application error:", message);
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'mb-4 bg-red-50 border border-red-200 text-red-800 rounded-md p-4';
+        errorDiv.innerHTML = `
+            <div class="flex">
+                <div class="ml-3">
+                    <p class="text-sm">${message}</p>
+                </div>
+            </div>
+        `;
+        
+        // Insert at top of content
+        const content = document.querySelector('.max-w-3xl.mx-auto');
+        content.insertBefore(errorDiv, content.firstChild);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 5000);
+    }
+    // Helper function to capitalize first letter (unchanged)
+    function capitalizeFirstLetter(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
+    }
+    
+    // Cleanup when page unloads (unchanged)
+    window.addEventListener('beforeunload', function() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+        
+        if (faceDetectionInterval) {
+            clearInterval(faceDetectionInterval);
+        }
+    });
+    
+    // Rest of the event listeners remain the same...
+});
 </script>
-{% endblock %}
 
+
+{% endblock %}
